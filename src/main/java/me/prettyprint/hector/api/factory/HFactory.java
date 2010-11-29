@@ -1,30 +1,13 @@
 package me.prettyprint.hector.api.factory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import me.prettyprint.cassandra.model.ExecutingKeyspace;
 import me.prettyprint.cassandra.model.HColumnImpl;
 import me.prettyprint.cassandra.model.HSuperColumnImpl;
 import me.prettyprint.cassandra.model.MutatorImpl;
 import me.prettyprint.cassandra.model.QuorumAllConsistencyLevelPolicy;
-import me.prettyprint.cassandra.model.thrift.ThriftColumnQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftCountQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftMultigetSliceQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftMultigetSubSliceQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftMultigetSuperSliceQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftRangeSlicesQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftRangeSubSlicesQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftRangeSuperSlicesQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftSliceQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftSubColumnQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftSubCountQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftSubSliceQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftSuperColumnQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftSuperCountQuery;
-import me.prettyprint.cassandra.model.thrift.ThriftSuperSliceQuery;
+import me.prettyprint.cassandra.model.thrift.*;
 import me.prettyprint.cassandra.serializers.StringSerializer;
+import me.prettyprint.cassandra.service.CassandraClient;
 import me.prettyprint.cassandra.service.CassandraHost;
 import me.prettyprint.cassandra.service.CassandraHostConfigurator;
 import me.prettyprint.cassandra.service.ThriftCluster;
@@ -48,6 +31,10 @@ import me.prettyprint.hector.api.query.SubCountQuery;
 import me.prettyprint.hector.api.query.SubSliceQuery;
 import me.prettyprint.hector.api.query.SuperColumnQuery;
 import me.prettyprint.hector.api.query.SuperSliceQuery;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 /**
  * A convenience class with bunch of factory static methods to help create a mutator,
  * queries etc.
@@ -110,6 +97,11 @@ public final class HFactory {
   public static Keyspace createKeyspace(String keyspace, Cluster cluster,
       ConsistencyLevelPolicy consistencyLevelPolicy) {
     return new ExecutingKeyspace(keyspace, cluster, consistencyLevelPolicy);
+  }
+
+  public static Keyspace createKeyspace(String keyspace, Cluster cluster,
+      ConsistencyLevelPolicy consistencyLevelPolicy, CassandraClient.FailoverPolicy failoverPolicy) {
+    return new ExecutingKeyspace(keyspace, cluster, consistencyLevelPolicy, failoverPolicy);
   }
 
   public static ConsistencyLevelPolicy createDefaultConsistencyLevelPolicy() {

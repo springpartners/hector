@@ -20,13 +20,20 @@ public class ExecutingKeyspace implements Keyspace {
 
   private final Cluster cluster;
   private final String keyspace;
+  private CassandraClient.FailoverPolicy failoverPolicy;
 
   public ExecutingKeyspace(String keyspace, Cluster cluster,
       ConsistencyLevelPolicy consistencyLevelPolicy) {
+    this(keyspace, cluster, consistencyLevelPolicy, null);
+  }
+
+  public ExecutingKeyspace(String keyspace, Cluster cluster,
+      ConsistencyLevelPolicy consistencyLevelPolicy, CassandraClient.FailoverPolicy failoverPolicy) {
     Assert.noneNull(keyspace, cluster, consistencyLevelPolicy);
     this.keyspace = keyspace;
     this.cluster = cluster;
     this.consistencyLevelPolicy = consistencyLevelPolicy;
+    this.failoverPolicy = failoverPolicy;
   }
 
   @Override
@@ -54,7 +61,11 @@ public class ExecutingKeyspace implements Keyspace {
     KeyspaceService ks = null;
     try {
         c = cluster.borrowClient();
-        ks = c.getKeyspace(keyspace, consistencyLevelPolicy.get(OperationType.READ));
+        if (failoverPolicy != null)
+          ks = c.getKeyspace(keyspace, consistencyLevelPolicy.get(OperationType.READ), failoverPolicy);
+        else
+          ks = c.getKeyspace(keyspace, consistencyLevelPolicy.get(OperationType.READ));
+
         return koc.doInKeyspaceAndMeasure(ks);
     } finally {
       if ( ks != null ) {
