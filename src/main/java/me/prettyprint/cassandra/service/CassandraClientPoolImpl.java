@@ -1,5 +1,12 @@
 package me.prettyprint.cassandra.service;
 
+import me.prettyprint.cassandra.service.CassandraClientMonitor.Counter;
+import me.prettyprint.hector.api.Cluster;
+import me.prettyprint.hector.api.exceptions.HectorException;
+import me.prettyprint.hector.api.exceptions.HectorTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -8,16 +15,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import me.prettyprint.cassandra.service.CassandraClientMonitor.Counter;
-import me.prettyprint.hector.api.Cluster;
-import me.prettyprint.hector.api.exceptions.HectorException;
-import me.prettyprint.hector.api.exceptions.HectorTransportException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * We declare this pool as enum to make sure it stays a singlton in the system so clients may
@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
   private CassandraHostConfigurator cassandraHostConfigurator;
   private final Cluster cluster;
+  private Random random = new Random();
 
   public CassandraClientPoolImpl(CassandraClientMonitor clientMonitor) {
     log.info("Creating a CassandraClientPool");
@@ -220,7 +221,7 @@ import org.slf4j.LoggerFactory;
   public CassandraClient borrowClient(String[] clientUrls) throws HectorException {
     List<String> clients = new ArrayList<String>(Arrays.asList(clientUrls));
     while(!clients.isEmpty()) {
-      int rand = (int) (Math.random() * clients.size());
+      int rand = random.nextInt(clients.size());
       try {
         return borrowClient(clients.get(rand));
       } catch (HectorException e) {

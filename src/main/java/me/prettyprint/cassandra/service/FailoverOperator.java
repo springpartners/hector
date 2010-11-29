@@ -1,9 +1,5 @@
 package me.prettyprint.cassandra.service;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import me.prettyprint.cassandra.service.CassandraClient.FailoverPolicy;
 import me.prettyprint.cassandra.service.CassandraClientMonitor.Counter;
 import me.prettyprint.cassandra.utils.Assert;
@@ -13,12 +9,16 @@ import me.prettyprint.hector.api.exceptions.HUnavailableException;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.exceptions.HectorTransportException;
 import me.prettyprint.hector.api.exceptions.PoolExhaustedException;
-
 import org.apache.cassandra.thrift.Cassandra;
 import org.perf4j.StopWatch;
 import org.perf4j.slf4j.Slf4JStopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * A fail-over operation executor.
@@ -62,6 +62,8 @@ import org.slf4j.LoggerFactory;
    */
   private final KeyspaceService keyspace;
 
+  private Random random = new Random();
+
   /**
    *
    * @param policy The failover policy for this operator.
@@ -101,7 +103,7 @@ import org.slf4j.LoggerFactory;
             return client;
           }
         } catch (SkipHostException e) {
-          log.warn("Skip-host failed ", e);
+          log.warn("Skip-host failed: " + e.getMessage() + ", retrying again");
           // continue the loop to the next host.
         }
         sleepBetweenHostSkips();
@@ -326,7 +328,7 @@ import org.slf4j.LoggerFactory;
    * @return
    */
   private CassandraHost chooseRandomHost(List<CassandraHost> knownHosts) {
-    int rnd = (int) (Math.random() * knownHosts.size());
+    int rnd = random.nextInt(knownHosts.size());
     CassandraHost host = knownHosts.get(rnd);
     if ( log.isInfoEnabled() ) {
       log.info("Choosing random host to skip to: {}", host);
