@@ -90,25 +90,23 @@ import java.util.Random;
    */
   public CassandraClient operate(Operation<?> op) throws HectorException {
     final StopWatch stopWatch = new Slf4JStopWatch(perf4jLogger);
-    int retries = Math.min(failoverPolicy.numRetries + 1, knownHosts.size());
-    boolean isFirst = true;
+
+    int retries = Math.min(failoverPolicy.numRetries, knownHosts.size());
+
     try {
-      while (retries > 0) {
-        if (!isFirst) {
-          --retries;
-        }
+      do {
         try {
-          boolean success = operateSingleIteration(op, stopWatch, retries, isFirst);
-          if (success) {
+          boolean success = operateSingleIteration(op, stopWatch, retries);
+          if (success)
             return client;
-          }
         } catch (SkipHostException e) {
           log.warn("Skip-host failed: " + e.getMessage() + ", retrying again");
           // continue the loop to the next host.
         }
+
         sleepBetweenHostSkips();
-        isFirst = false;
-      }
+        --retries;
+      } while (retries > 0);
     } catch (HInvalidRequestException e) {
       monitor.incCounter(op.failCounter);
       stopWatch.stop(op.stopWatchTagName + ".fail_");
@@ -166,7 +164,7 @@ import java.util.Random;
       try {
         Thread.sleep(failoverPolicy.sleepBetweenHostsMilli);
       } catch (InterruptedException e) {
-        log.warn("Sleep between hosts interrupted", e);
+        log.warn("Sleep between hosts interrupted");
       }
     }
   }
@@ -181,8 +179,7 @@ import java.util.Random;
    * @param retries the number of retries left.
    * @param isFirst is this the first iteraion?
    */
-  private boolean operateSingleIteration(Operation<?> op, final StopWatch stopWatch,
-      int retries, boolean isFirst) throws HectorException,
+  private boolean operateSingleIteration(Operation<?> op, final StopWatch stopWatch, int retries) throws HectorException,
       PoolExhaustedException, Exception, HUnavailableException, HectorTransportException {
     if ( log.isDebugEnabled() ) {
       log.debug("Performing operation on {}; retries: {}", client.getCassandraHost().getUrl(), retries);
@@ -203,7 +200,7 @@ import java.util.Random;
       if (retries == 0) {
         throw e;
       } else {
-        skipToNextHost(isFirst, false);
+        skipToNextHost(false);
         monitor.incCounter(Counter.RECOVERABLE_TIMED_OUT_EXCEPTIONS);
       }
     } catch (HUnavailableException e) {
@@ -212,7 +209,7 @@ import java.util.Random;
       if (retries == 0) {
         throw e;
       } else {
-        skipToNextHost(isFirst, true);
+        skipToNextHost(true);
         monitor.incCounter(Counter.RECOVERABLE_UNAVAILABLE_EXCEPTIONS);
       }
     } catch (HectorTransportException e) {
@@ -223,7 +220,7 @@ import java.util.Random;
       if (retries == 0) {
         throw e;
       } else {
-        skipToNextHost(isFirst, true);
+        skipToNextHost(true);
         monitor.incCounter(Counter.RECOVERABLE_TRANSPORT_EXCEPTIONS);
       }
     }
@@ -241,8 +238,7 @@ import java.util.Random;
    * @param invalidateAllConnectionsToCurrentHost If true, all connections to the current host
    * should be invalidated.
    */
-  private void skipToNextHost(boolean isRetrySameHostAgain,
-      boolean invalidateAllConnectionsToCurrentHost) throws SkipHostException {
+  private void skipToNextHost(boolean invalidateAllConnectionsToCurrentHost) throws SkipHostException {
     Assert.notNull(currentHost, "currentHost is null");
 
     if ( log.isInfoEnabled() ) {
@@ -254,7 +250,7 @@ import java.util.Random;
       clientPools.invalidateAllConnectionsToHost(client);
     }
 
-    CassandraHost nextHost = isRetrySameHostAgain ? currentHost : getNextHost(currentHost);
+    CassandraHost nextHost = getNextHost(currentHost);
     if (nextHost == null) {
       log.error("Unable to find next host to skip to at {}", toString());
       throw new SkipHostException("Unable to failover to next host");
