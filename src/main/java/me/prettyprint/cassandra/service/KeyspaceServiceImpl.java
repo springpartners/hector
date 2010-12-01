@@ -603,9 +603,7 @@ import org.slf4j.LoggerFactory;
 
   @Override
   public ConsistencyLevel getConsistencyLevel() {
-    ConsistencyLevel level = failoverPolicy.checkConsistency(consistency);
-    log.warn("using consistency level " + level);
-    return level;
+    return failoverPolicy.checkConsistency(consistency);
   }
 
   @Override
