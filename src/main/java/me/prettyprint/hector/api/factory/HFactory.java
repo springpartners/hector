@@ -7,9 +7,9 @@ import me.prettyprint.cassandra.model.MutatorImpl;
 import me.prettyprint.cassandra.model.QuorumAllConsistencyLevelPolicy;
 import me.prettyprint.cassandra.model.thrift.*;
 import me.prettyprint.cassandra.serializers.StringSerializer;
-import me.prettyprint.cassandra.service.CassandraClient;
 import me.prettyprint.cassandra.service.CassandraHost;
 import me.prettyprint.cassandra.service.CassandraHostConfigurator;
+import me.prettyprint.cassandra.service.FailoverPolicy;
 import me.prettyprint.cassandra.service.ThriftCluster;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.ConsistencyLevelPolicy;
@@ -100,7 +100,7 @@ public final class HFactory {
   }
 
   public static Keyspace createKeyspace(String keyspace, Cluster cluster,
-      ConsistencyLevelPolicy consistencyLevelPolicy, CassandraClient.FailoverPolicy failoverPolicy) {
+      ConsistencyLevelPolicy consistencyLevelPolicy, FailoverPolicy failoverPolicy) {
     return new ExecutingKeyspace(keyspace, cluster, consistencyLevelPolicy, failoverPolicy);
   }
 

@@ -226,7 +226,7 @@ import java.util.concurrent.ConcurrentHashMap;
         return borrowClient(clients.get(rand));
       } catch (HectorException e) {
         if (clients.size() > 1) {
-          log.warn("Unable to obtain client " + clients.get(rand) + " will try the next client", e);
+          log.warn("Unable to obtain client " + clients.get(rand) + " will try the next client");
           clientMonitor.incCounter(Counter.RECOVERABLE_LB_CONNECT_ERRORS);
           clients.remove(rand);
         } else {

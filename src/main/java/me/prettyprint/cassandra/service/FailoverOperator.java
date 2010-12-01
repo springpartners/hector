@@ -1,6 +1,5 @@
 package me.prettyprint.cassandra.service;
 
-import me.prettyprint.cassandra.service.CassandraClient.FailoverPolicy;
 import me.prettyprint.cassandra.service.CassandraClientMonitor.Counter;
 import me.prettyprint.cassandra.utils.Assert;
 import me.prettyprint.hector.api.exceptions.HInvalidRequestException;
@@ -200,6 +199,7 @@ import java.util.Random;
       if (retries == 0) {
         throw e;
       } else {
+        failoverPolicy.handleTimeout(this, retries);
         skipToNextHost(false);
         monitor.incCounter(Counter.RECOVERABLE_TIMED_OUT_EXCEPTIONS);
       }
@@ -209,6 +209,7 @@ import java.util.Random;
       if (retries == 0) {
         throw e;
       } else {
+        failoverPolicy.handleUnavailable(this, retries);
         skipToNextHost(true);
         monitor.incCounter(Counter.RECOVERABLE_UNAVAILABLE_EXCEPTIONS);
       }
@@ -220,6 +221,7 @@ import java.util.Random;
       if (retries == 0) {
         throw e;
       } else {
+        failoverPolicy.handleTransportError(this, retries);
         skipToNextHost(true);
         monitor.incCounter(Counter.RECOVERABLE_TRANSPORT_EXCEPTIONS);
       }
@@ -316,6 +318,10 @@ import java.util.Random;
         "host from the known host list. (thread={})",
         new Object[]{cassandraHost, knownHosts, Thread.currentThread().getName()});
     return chooseRandomHost(knownHosts);
+  }
+
+  public KeyspaceService getKeyspace() {
+    return keyspace;
   }
 
   /**

@@ -1,6 +1,7 @@
 package me.prettyprint.cassandra.model;
 
 import me.prettyprint.cassandra.service.CassandraClient;
+import me.prettyprint.cassandra.service.FailoverPolicy;
 import me.prettyprint.cassandra.service.KeyspaceService;
 import me.prettyprint.cassandra.utils.Assert;
 import me.prettyprint.hector.api.Cluster;
@@ -20,15 +21,15 @@ public class ExecutingKeyspace implements Keyspace {
 
   private final Cluster cluster;
   private final String keyspace;
-  private CassandraClient.FailoverPolicy failoverPolicy;
+  private FailoverPolicy failoverPolicy;
 
   public ExecutingKeyspace(String keyspace, Cluster cluster,
       ConsistencyLevelPolicy consistencyLevelPolicy) {
-    this(keyspace, cluster, consistencyLevelPolicy, null);
+    this(keyspace, cluster, consistencyLevelPolicy, CassandraClient.DEFAULT_FAILOVER_POLICY);
   }
 
   public ExecutingKeyspace(String keyspace, Cluster cluster,
-      ConsistencyLevelPolicy consistencyLevelPolicy, CassandraClient.FailoverPolicy failoverPolicy) {
+      ConsistencyLevelPolicy consistencyLevelPolicy, FailoverPolicy failoverPolicy) {
     Assert.noneNull(keyspace, cluster, consistencyLevelPolicy);
     this.keyspace = keyspace;
     this.cluster = cluster;
@@ -57,14 +58,15 @@ public class ExecutingKeyspace implements Keyspace {
   }
 
   public <T> ExecutionResult<T> doExecute(KeyspaceOperationCallback<T> koc) throws HectorException {
+    return doExecute(koc, OperationType.READ);
+  }
+
+  public <T> ExecutionResult<T> doExecute(KeyspaceOperationCallback<T> koc, OperationType opType) throws HectorException {
     CassandraClient c = null;
     KeyspaceService ks = null;
     try {
         c = cluster.borrowClient();
-        if (failoverPolicy != null)
-          ks = c.getKeyspace(keyspace, consistencyLevelPolicy.get(OperationType.READ), failoverPolicy);
-        else
-          ks = c.getKeyspace(keyspace, consistencyLevelPolicy.get(OperationType.READ));
+        ks = c.getKeyspace(keyspace, consistencyLevelPolicy.get(opType), failoverPolicy);
 
         return koc.doInKeyspaceAndMeasure(ks);
     } finally {

@@ -4,7 +4,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import me.prettyprint.cassandra.service.CassandraClient.FailoverPolicy;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.exceptions.HectorPoolException;

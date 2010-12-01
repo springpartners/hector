@@ -1,6 +1,5 @@
 package me.prettyprint.cassandra.service;
 
-import me.prettyprint.cassandra.service.CassandraClient.FailoverPolicy;
 import me.prettyprint.hector.api.exceptions.HectorTransportException;
 
 import org.apache.cassandra.thrift.ConsistencyLevel;

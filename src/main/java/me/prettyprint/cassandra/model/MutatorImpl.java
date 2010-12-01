@@ -5,6 +5,7 @@ import java.util.Arrays;
 import me.prettyprint.cassandra.model.thrift.ThriftFactory;
 import me.prettyprint.cassandra.service.BatchMutation;
 import me.prettyprint.cassandra.service.KeyspaceService;
+import me.prettyprint.hector.api.ConsistencyLevelPolicy;
 import me.prettyprint.hector.api.Keyspace;
 import me.prettyprint.hector.api.Serializer;
 import me.prettyprint.hector.api.beans.HColumn;
@@ -76,7 +77,7 @@ public final class MutatorImpl implements Mutator {
             sNameSerializer, nameSerializer));
         return null;
       }
-    }));
+    }, ConsistencyLevelPolicy.OperationType.WRITE));
   }
 
   // schedule an insertion to be executed in batch by the execute method
@@ -120,14 +121,14 @@ public final class MutatorImpl implements Mutator {
       return new MutationResultImpl(true, 0, null);
     }
     final BatchMutation mutations = pendingMutations.makeCopy();
-    pendingMutations = null;
     return new MutationResultImpl(keyspace.doExecute(new KeyspaceOperationCallback<Void>() {
       @Override
       public Void doInKeyspace(KeyspaceService ks) throws HectorException {
         ks.batchMutate(mutations);
+        pendingMutations = null;
         return null;
       }
-    }));
+    }, ConsistencyLevelPolicy.OperationType.WRITE));
   }
 
   /**

@@ -7,7 +7,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import me.prettyprint.cassandra.service.CassandraClient.FailoverPolicy;
 import me.prettyprint.hector.api.exceptions.HInvalidRequestException;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.exceptions.HectorTransportException;
@@ -97,7 +96,7 @@ import org.slf4j.LoggerFactory;
       @Override
       public Void execute(Cassandra.Client cassandra) throws HectorException {
         try {
-          cassandra.batch_insert(keyspaceName, key, cfmap, consistency);
+          cassandra.batch_insert(keyspaceName, key, cfmap, getConsistencyLevel());
           return null;
         } catch (Exception e) {
           throw xtrans.translate(e);
@@ -114,7 +113,7 @@ import org.slf4j.LoggerFactory;
       @Override
       public Void execute(Cassandra.Client cassandra) throws HectorException {
         try {
-          cassandra.batch_mutate(keyspaceName, mutationMap, consistency);
+          cassandra.batch_mutate(keyspaceName, mutationMap, getConsistencyLevel());
         } catch (Exception e) {
           throw xtrans.translate(e);
         }
@@ -135,7 +134,7 @@ import org.slf4j.LoggerFactory;
       @Override
       public Integer execute(Cassandra.Client cassandra) throws HectorException {
         try {
-          return cassandra.get_count(keyspaceName, key, columnParent, consistency);
+          return cassandra.get_count(keyspaceName, key, columnParent, getConsistencyLevel());
         } catch (Exception e) {
           throw xtrans.translate(e);
         }
@@ -161,7 +160,7 @@ import org.slf4j.LoggerFactory;
       public Map<String, List<Column>> execute(Cassandra.Client cassandra) throws HectorException {
         try {
           List<KeySlice> keySlices = cassandra.get_range_slice(keyspaceName, columnParent,
-              predicate, start, finish, count, consistency);
+              predicate, start, finish, count, getConsistencyLevel());
           if (keySlices == null || keySlices.isEmpty()) {
             return Collections.emptyMap();
           }
@@ -189,7 +188,7 @@ import org.slf4j.LoggerFactory;
           throws HectorException {
         try {
           List<KeySlice> keySlices = cassandra.get_range_slices(keyspaceName, columnParent,
-              predicate, keyRange, consistency);
+              predicate, keyRange, getConsistencyLevel());
           if (keySlices == null || keySlices.isEmpty()) {
             return new LinkedHashMap<String, List<Column>>(0);
           }
@@ -219,7 +218,7 @@ import org.slf4j.LoggerFactory;
           throws HectorException {
         try {
           List<KeySlice> keySlices = cassandra.get_range_slice(keyspaceName, columnParent,
-              predicate, start, finish, count, consistency);
+              predicate, start, finish, count, getConsistencyLevel());
           if (keySlices == null || keySlices.isEmpty()) {
             return Collections.emptyMap();
           }
@@ -249,7 +248,7 @@ import org.slf4j.LoggerFactory;
           throws HectorException {
         try {
           List<KeySlice> keySlices = cassandra.get_range_slices(keyspaceName, columnParent,
-              predicate, keyRange, consistency);
+              predicate, keyRange, getConsistencyLevel());
           if (keySlices == null || keySlices.isEmpty()) {
             return new LinkedHashMap<String, List<SuperColumn>>();
           }
@@ -276,7 +275,7 @@ import org.slf4j.LoggerFactory;
       public List<Column> execute(Cassandra.Client cassandra) throws HectorException {
         try {
           List<ColumnOrSuperColumn> cosclist = cassandra.get_slice(keyspaceName, key, columnParent,
-              predicate, consistency);
+              predicate, getConsistencyLevel());
 
           if (cosclist == null) {
             return null;
@@ -304,7 +303,7 @@ import org.slf4j.LoggerFactory;
       public SuperColumn execute(Cassandra.Client cassandra) throws HectorException {
         ColumnOrSuperColumn cosc;
         try {
-          cosc = cassandra.get(keyspaceName, key, columnPath, consistency);
+          cosc = cassandra.get(keyspaceName, key, columnPath, getConsistencyLevel());
         } catch (NotFoundException e) {
           setException(xtrans.translate(e));
           return null;
@@ -338,7 +337,7 @@ import org.slf4j.LoggerFactory;
 
         try {
           List<ColumnOrSuperColumn> cosc = cassandra.get_slice(keyspaceName, key, clp, sp,
-              consistency);
+              getConsistencyLevel());
           if (cosc == null || cosc.isEmpty()) {
             return null;
           }
@@ -360,7 +359,7 @@ import org.slf4j.LoggerFactory;
       public List<SuperColumn> execute(Cassandra.Client cassandra) throws HectorException {
         try {
           List<ColumnOrSuperColumn> cosclist = cassandra.get_slice(keyspaceName, key, columnParent,
-              predicate, consistency);
+              predicate, getConsistencyLevel());
           if (cosclist == null) {
             return null;
           }
@@ -392,7 +391,7 @@ import org.slf4j.LoggerFactory;
       @Override
       public Void execute(Cassandra.Client cassandra) throws HectorException {
         try {
-          cassandra.insert(keyspaceName, key, columnPath, value, timestamp, consistency);
+          cassandra.insert(keyspaceName, key, columnPath, value, timestamp, getConsistencyLevel());
           return null;
         } catch (Exception e) {
           throw xtrans.translate(e);
@@ -413,7 +412,7 @@ import org.slf4j.LoggerFactory;
       public Map<String, Column> execute(Cassandra.Client cassandra) throws HectorException {
         try {
           Map<String, ColumnOrSuperColumn> cfmap = cassandra.multiget(keyspaceName, keys,
-              columnPath, consistency);
+              columnPath, getConsistencyLevel());
           if (cfmap == null || cfmap.isEmpty()) {
             return Collections.emptyMap();
           }
@@ -440,7 +439,7 @@ import org.slf4j.LoggerFactory;
       public Map<String, List<Column>> execute(Cassandra.Client cassandra) throws HectorException {
         try {
           Map<String, List<ColumnOrSuperColumn>> cfmap = cassandra.multiget_slice(keyspaceName,
-              keys, columnParent, predicate, consistency);
+              keys, columnParent, predicate, getConsistencyLevel());
 
           Map<String, List<Column>> result = new HashMap<String, List<Column>>();
           for (Map.Entry<String, List<ColumnOrSuperColumn>> entry : cfmap.entrySet()) {
@@ -502,7 +501,7 @@ import org.slf4j.LoggerFactory;
           throws HectorException {
         try {
           Map<String, List<ColumnOrSuperColumn>> cfmap = cassandra.multiget_slice(keyspaceName,
-              keys, columnParent, predicate, consistency);
+              keys, columnParent, predicate, getConsistencyLevel());
           // if user not given super column name, the multiget_slice will return
           // List
           // filled with
@@ -549,7 +548,7 @@ import org.slf4j.LoggerFactory;
       @Override
       public Void execute(Cassandra.Client cassandra) throws HectorException {
         try {
-          cassandra.remove(keyspaceName, key, columnPath, timestamp, consistency);
+          cassandra.remove(keyspaceName, key, columnPath, timestamp, getConsistencyLevel());
           return null;
         } catch (Exception e) {
           throw xtrans.translate(e);
@@ -583,7 +582,7 @@ import org.slf4j.LoggerFactory;
       public Column execute(Cassandra.Client cassandra) throws HectorException {
         ColumnOrSuperColumn cosc;
         try {
-          cosc = cassandra.get(keyspaceName, key, columnPath, consistency);
+          cosc = cassandra.get(keyspaceName, key, columnPath, getConsistencyLevel());
         } catch (NotFoundException e) {
           setException(xtrans.translate(e));
           return null;
@@ -604,7 +603,9 @@ import org.slf4j.LoggerFactory;
 
   @Override
   public ConsistencyLevel getConsistencyLevel() {
-    return consistency;
+    ConsistencyLevel level = failoverPolicy.checkConsistency(consistency);
+    log.warn("using consistency level " + level);
+    return level;
   }
 
   @Override
