@@ -13,6 +13,8 @@ public interface Cluster {
 
   public abstract Set<CassandraHost> getKnownPoolHosts(boolean refresh);
 
+  public abstract Set<CassandraHost> getDownPoolHosts();
+
   /**
    * These are all the hosts known to the cluster
    * @param refresh
@@ -28,6 +30,12 @@ public interface Cluster {
    */
   public abstract void addHost(CassandraHost cassandraHost,
       boolean skipApplyConfig);
+
+  /**
+   * REmoves the host from this Cluster.
+   * @param cassandraHost
+   */
+  public abstract void removeHost(CassandraHost cassandraHost);
 
   /**
    * Descriptive name of the cluster.
@@ -57,4 +65,6 @@ public interface Cluster {
       final String keyspace) throws HectorException;
 
   public abstract String getClusterName() throws HectorException;
+
+  public abstract void shutdown();
 }

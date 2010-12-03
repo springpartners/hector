@@ -152,12 +152,21 @@ public interface CassandraClientPool {
   int getNumActive();
 
   Set<CassandraHost> getKnownHosts();
+
+  Set<CassandraHost> getDownHosts();
   
   /**
    * Adds the (pre-configured) CassandraHost to the pool if not already present
    * @param cassandraHost
    */
   void addCassandraHost(CassandraHost cassandraHost);
+
+
+  /**
+   * removes the (pre-configured) CassandraHost to the pool if present
+   * @param cassandraHost
+   */
+  void removeCassandraHost(CassandraHost cassandraHost);
 
   /**
    * Use this method to invalidate the client and take it out of the pool.
@@ -181,4 +190,6 @@ public interface CassandraClientPool {
    * @return
    */
   Cluster getCluster();
+
+  void shutdown();
 }

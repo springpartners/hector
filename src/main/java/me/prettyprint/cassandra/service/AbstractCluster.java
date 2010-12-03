@@ -82,6 +82,14 @@ public abstract class AbstractCluster implements Cluster {
   }
 
   /* (non-Javadoc)
+   * @see me.prettyprint.cassandra.service.Cluster#getKnownPoolHosts(boolean)
+   */
+  @Override
+  public Set<CassandraHost> getDownPoolHosts() {
+    return pool.getDownHosts();
+  }
+
+  /* (non-Javadoc)
    * @see me.prettyprint.cassandra.service.Cluster#getClusterHosts(boolean)
    */
   @Override
@@ -108,9 +116,15 @@ public abstract class AbstractCluster implements Cluster {
       configurator.applyConfig(cassandraHost);
     }
     pool.addCassandraHost(cassandraHost);
-    pool.updateKnownHosts();
   }
 
+  /* (non-Javadoc)
+   * @see me.prettyprint.cassandra.service.Cluster#addHost(me.prettyprint.cassandra.service.CassandraHost, boolean)
+   */
+  @Override
+  public void removeHost(CassandraHost cassandraHost) {
+    pool.removeCassandraHost(cassandraHost);
+  }
 
   /* (non-Javadoc)
    * @see me.prettyprint.cassandra.service.Cluster#getName()
@@ -290,4 +304,7 @@ public abstract class AbstractCluster implements Cluster {
     }
   }
 
+  public void shutdown() {
+    pool.shutdown();
+  }
 }

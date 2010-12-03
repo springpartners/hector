@@ -4,12 +4,18 @@ import me.prettyprint.cassandra.service.CassandraClientMonitor.Counter;
 import me.prettyprint.hector.api.Cluster;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.exceptions.HectorTransportException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -18,6 +24,9 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * We declare this pool as enum to make sure it stays a singlton in the system so clients may
@@ -41,11 +50,16 @@ import java.util.concurrent.ConcurrentHashMap;
   private final Cluster cluster;
   private Random random = new Random();
 
+  private ScheduledExecutorService maintenance = Executors.newScheduledThreadPool(1);
+  private long lastMaintenanceFinished = -1L;
+  private Map<CassandraHost, CassandraClientPoolByHost> downPools = new ConcurrentHashMap<CassandraHost, CassandraClientPoolByHost>();
+
   public CassandraClientPoolImpl(CassandraClientMonitor clientMonitor) {
     log.info("Creating a CassandraClientPool");
     pools = new ConcurrentHashMap<CassandraHost, CassandraClientPoolByHost>();
     this.clientMonitor = clientMonitor;
     this.cluster = new ThriftCluster("Default Cluster", this);
+    createMaintenanceCheck();
   }
 
   public CassandraClientPoolImpl(CassandraClientMonitor clientMonitor,
@@ -64,16 +78,87 @@ import java.util.concurrent.ConcurrentHashMap;
     this.cassandraHostConfigurator = cassandraHostConfigurator;
   }
 
+  private void createMaintenanceCheck(){
+    // schedule the connection fixer
+    maintenance.scheduleAtFixedRate(new Runnable() {
+      public void run() {
+        synchronized(pools) {
+          // don't run a bunch if the last one just finished
+          if (lastMaintenanceFinished != -1 && System.currentTimeMillis() - lastMaintenanceFinished < 10000L)
+            return;
+
+          try {
+            Set<CassandraHost> reActiveHosts = new HashSet<CassandraHost>();
+
+            //now check all of the down ones
+            for (CassandraHost host : downPools.keySet()) {
+              if(!validateHostConnection(host)){
+                log.warn("host " + host.getIp() + " is still down, not re-adding to connection pools");
+              } else{ //add it back
+                log.warn("host " + host.getIp() + " is no longer down, re-adding to connection pools");
+                reActiveHosts.add(host);
+              }
+            }
+
+            //check the health of all of the "healthy" ones
+            Set<CassandraHost> currentClusterHosts = getKnownHosts();
+            for (CassandraHost host : currentClusterHosts) {
+              if(!validateHostConnection(host)){
+                log.warn("detected that " + host.getIp() + " is down, removing from the connection pools");
+                downPools.put(host, pools.remove(host));
+              }
+            }
+
+            //add back in any hosts that were down and are up now
+            for (CassandraHost host : reActiveHosts) {
+              pools.put(host, downPools.remove(host));
+            }
+
+          } catch (Exception e) {
+            log.error("error updating cassandra cluster based on ring", e);
+          }
+
+          lastMaintenanceFinished = System.currentTimeMillis();
+        }
+      }
+    }, 30, 30, TimeUnit.SECONDS);
+  }
+
+  private boolean validateHostConnection(CassandraHost host) {
+    TTransport transport = null;
+    try {
+      final TSocket thriftSocket = new TSocket(host.getIp(), cassandraHostConfigurator.getPort(), 10000);
+      transport = new TFramedTransport(thriftSocket);
+      TProtocol proto = new TBinaryProtocol(transport);
+      org.apache.cassandra.thrift.Cassandra.Client client = new org.apache.cassandra.thrift.Cassandra.Client(proto);
+      transport.open();
+      client.describe_cluster_name();
+      return true;
+    } catch(Exception e) {
+      return false;
+    } finally {
+      if (transport != null && transport.isOpen())
+        transport.close();
+    }
+  }
 
   @Override
   public CassandraClient borrowClient() throws HectorException {
-    String[] clients = new String[pools.size()];
-    int x = 0;
-    for(CassandraHost cassandraHost : pools.keySet()) {
-      clients[x] = cassandraHost.getUrl();
-      x++;
-    }
-    return borrowClient(clients);
+    List<CassandraHost> hosts = new ArrayList(pools.keySet());
+    //sort by least active
+    Collections.sort(hosts, new Comparator<CassandraHost>() {
+      public int compare(CassandraHost h1, CassandraHost h2) {
+        CassandraClientPoolByHost p1 = pools.get(h1);
+        CassandraClientPoolByHost p2 = pools.get(h2);
+        if ( p1.getNumActive() < p2.getNumActive() ) {
+          return 1;
+        } else if ( p1.getNumActive() > p2.getNumActive() ) {
+          return -1;
+        }
+        return 0;
+      }
+    });
+    return borrowClient(hosts.get(0));
   }
 
   @Override
@@ -191,6 +276,10 @@ import java.util.concurrent.ConcurrentHashMap;
     return Collections.unmodifiableSet(pools.keySet());
   }
 
+  @Override
+  public Set<CassandraHost> getDownHosts() {
+    return Collections.unmodifiableSet(downPools.keySet());
+  }
 
   @Override
   public void invalidateClient(CassandraClient client) {
@@ -277,7 +366,25 @@ import java.util.concurrent.ConcurrentHashMap;
   }
 
   @Override
+  public void removeCassandraHost(CassandraHost cassandraHost) {
+    synchronized (pools) {
+      CassandraClientPoolByHost pool = pools.remove(cassandraHost);
+      if(pool != null)
+        pool.invalidateAll();
+      else{
+        pool = downPools.remove(cassandraHost);
+        if(pool != null)
+          pool.invalidateAll();
+      }
+    }
+  }
+
+  @Override
   public Cluster getCluster() {
     return cluster;
+  }
+
+  public void shutdown() {
+    maintenance.shutdown();
   }
 }
