@@ -278,7 +278,7 @@ import org.slf4j.LoggerFactory;
               predicate, getConsistencyLevel());
 
           if (cosclist == null) {
-            return null;
+            return Collections.emptyList();
           }
           ArrayList<Column> result = new ArrayList<Column>(cosclist.size());
           for (ColumnOrSuperColumn cosc : cosclist) {
