@@ -144,21 +144,13 @@ import java.util.concurrent.TimeUnit;
 
   @Override
   public CassandraClient borrowClient() throws HectorException {
-    List<CassandraHost> hosts = new ArrayList(pools.keySet());
-    //sort by least active
-    Collections.sort(hosts, new Comparator<CassandraHost>() {
-      public int compare(CassandraHost h1, CassandraHost h2) {
-        CassandraClientPoolByHost p1 = pools.get(h1);
-        CassandraClientPoolByHost p2 = pools.get(h2);
-        if ( p1.getNumActive() < p2.getNumActive() ) {
-          return 1;
-        } else if ( p1.getNumActive() > p2.getNumActive() ) {
-          return -1;
-        }
-        return 0;
-      }
-    });
-    return borrowClient(hosts.get(0));
+    String[] clients = new String[pools.size()];
+    int x = 0;
+    for(CassandraHost cassandraHost : pools.keySet()) {
+      clients[x] = cassandraHost.getUrl();
+      x++;
+    }
+    return borrowClient(clients);
   }
 
   @Override
