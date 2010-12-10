@@ -111,7 +111,8 @@ import java.util.concurrent.TimeUnit;
 
             //add back in any hosts that were down and are up now
             for (CassandraHost host : reActiveHosts) {
-              pools.put(host, downPools.remove(host));
+              removeCassandraHost(host);
+              addCassandraHost(host);
             }
 
           } catch (Exception e) {
@@ -126,8 +127,9 @@ import java.util.concurrent.TimeUnit;
 
   private boolean validateHostConnection(CassandraHost host) {
     TTransport transport = null;
+    TSocket thriftSocket = null;
     try {
-      final TSocket thriftSocket = new TSocket(host.getIp(), cassandraHostConfigurator.getPort(), 10000);
+      thriftSocket = new TSocket(host.getIp(), cassandraHostConfigurator.getPort(), 10000);
       transport = new TFramedTransport(thriftSocket);
       TProtocol proto = new TBinaryProtocol(transport);
       org.apache.cassandra.thrift.Cassandra.Client client = new org.apache.cassandra.thrift.Cassandra.Client(proto);
@@ -139,6 +141,8 @@ import java.util.concurrent.TimeUnit;
     } finally {
       if (transport != null && transport.isOpen())
         transport.close();
+      if(thriftSocket != null && thriftSocket.isOpen())
+        thriftSocket.close();
     }
   }
 
